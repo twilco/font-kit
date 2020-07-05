@@ -628,11 +628,25 @@ impl Font {
     }
 
     /// Returns the amount that the given glyph should be displaced from the origin.
-    ///
-    /// FIXME(pcwalton): This always returns zero on FreeType.
-    pub fn origin(&self, _: u32) -> Result<Vector2F, GlyphLoadingError> {
-        warn!("unimplemented");
-        Ok(Vector2F::default())
+    pub fn origin(&self, glyph_id: u32) -> Result<Vector2F, GlyphLoadingError> {
+        unsafe {
+            if FT_Load_Glyph(
+                self.freetype_face,
+                glyph_id,
+                (FT_LOAD_DEFAULT | FT_LOAD_NO_HINTING) as i32,
+            ) != 0
+            {
+                return Err(GlyphLoadingError::NoSuchGlyph);
+            }
+
+            let metrics = &(*(*self.freetype_face).glyph).metrics;
+            Ok(
+                Vector2I::new(
+                    metrics.horiBearingX as i32,
+                    metrics.horiBearingY as i32
+                ).ft_fixed_26_6_to_f32()
+            )
+        }
     }
 
     /// Retrieves various metrics that apply to the entire font.
